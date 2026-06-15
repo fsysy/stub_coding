@@ -126,6 +126,48 @@
 
 ---
 
+## 발전된 워크플로우 — context.md + docstring + Local LLM 문서화
+
+현재 실험의 한계(긴 스펙 문서, 별도 문서 작성 비용)를 줄이기 위한 변형 워크플로우.
+
+```
+[Claude]  짧은 context.md → stub + docstring + pytest 작성
+[Local]   stub 구현 채우기 + docstring 기반으로 README 생성
+```
+
+### 현재 실험 대비 토큰 흐름 변화
+
+| 항목 | 현재 SDD | 현재 TDD | 새 SDD | 새 TDD |
+|------|---------|---------|--------|--------|
+| Claude Input | 스펙 전체 (~353 단어) | 스텁 (~53 단어) | 짧은 context.md (~50 단어) | 짧은 context.md (~50 단어) |
+| Claude Output | 구현 + 테스트 | stub + pytest | 구현 + docstring + pytest | **stub + docstring + pytest만** |
+| Local LLM 담당 | — | 구현 채우기 | README 생성 | 구현 채우기 + README 생성 |
+
+### 판단: 새 TDD가 더 경제적
+
+1. **Input 측면**: context.md를 짧게 쓰면 SDD와 TDD 모두 input이 줄어든다. 단, 현재 TDD-A는 이미 input이 53 단어였으므로 SDD쪽 절감 여지가 더 크다 — SDD가 TDD에 근접해지는 효과이지, 역전은 아니다.
+
+2. **Output 측면**: Claude가 구현을 작성하지 않는 TDD 구조는 그대로 유지된다. docstring이 stub에 붙어 output이 소폭 늘어나지만 full implementation보다는 여전히 짧다.
+
+3. **docstring이 TDD를 더 강하게 만든다**: 현재 TDD에서 Local LLM은 pytest만 보고 구현을 추론한다. docstring이 stub에 붙으면 함수의 의도·경계 조건이 명시되어 **Local LLM의 반복 횟수가 줄어들 가능성**이 있다. SDD에서는 docstring이 별 추가 효과가 없다.
+
+### 한계
+
+- **탐색적 개발 사이클에서는 여전히 SDD 유리**: 인터페이스가 확정되지 않은 단계에서 stub+docstring을 먼저 정의하는 건 부담이다.
+- **docstring 품질이 Local LLM 성능을 결정**: docstring이 빈약하면 Local LLM 반복이 늘어 비효율이 생긴다.
+- **README 생성 절감은 양쪽 동일**: 현재 실험에서도 Claude가 README를 직접 작성하지 않았으므로, 이 부분은 SDD/TDD 간 차별화 요소가 아니다.
+
+### 이 실험에서 사용된 Local LLM
+
+**Qwen3.5 A3B 35B Q4** (pi CLI v0.79.3, 로컬 실행)
+
+- 35B 파라미터 / Q4 양자화 모델로 일반 소비자 GPU에서 구동 가능한 수준
+- 토큰 비용 없음 (로컬 추론), 단 속도와 context 길이에 제약
+- 코드 품질은 프론티어 모델 대비 생각보다 크게 뒤처지지 않으며, 도메인 특화 코드(DNA 분석)에서는 오히려 Claude Sonnet을 앞서는 결과가 나옴
+- 모듈 단위가 context size 내에 완결될 수 있도록 설계하는 것이 핵심
+
+---
+
 ## 프로젝트 구조
 
 ```
@@ -186,6 +228,6 @@ python3 -m radon hal scenario_a/sdd/csv_stats.py
 ## 환경
 
 - Claude: Sonnet 4.6 (SDD 전담, TDD에서 스텁+테스트 담당)
-- pi agent: Qwen3.5 (`pi` CLI v0.79.3) — TDD에서 구현 담당 (로컬 실행, 토큰 비용 없음)
+- pi agent: Qwen3.5 A3B 35B Q4 (`pi` CLI v0.79.3) — TDD에서 구현 담당 (로컬 실행, 토큰 비용 없음)
 - Python: 3.11
 - pytest / ruff / radon

@@ -4,9 +4,17 @@
 
 두 가지 코딩 방식에서 **Claude가 소비하는 토큰 비용**과 **코드 품질**을 비교하는 실험 프로젝트.
 
+### 용어 정리
+
+- **TDD** (Test-Driven Development): 구현 전에 테스트를 먼저 작성하고, 테스트를 통과하도록 코드를 채워나가는 개발 방식.
+- **SDD** (Spec-Driven Development): 스펙(요구사항 문서)을 입력으로 주고 테스트와 구현을 한 번에 생성하는 방식. 이 실험에서는 Claude가 전부 담당.
+- **pytest**: Python 표준 테스트 프레임워크. `assert` 기반으로 함수 동작을 검증하며, TDD에서 Local LLM이 구현을 완성했는지 판단하는 기준으로 사용.
+
+### 이 실험의 방식
+
 | 방식 | 설명 |
 |------|------|
-| **SDD** (Spec-Driven Development) | 스펙 → Claude(Sonnet 4.6)가 테스트 + 구현 전부 작성 |
+| **SDD** | 스펙 → Claude(Sonnet 4.6)가 테스트 + 구현 전부 작성 |
 | **Stub-Coding TDD** | 스펙 → **Claude(Sonnet 4.6)가 스텁 + pytest 테스트 작성** → **Local LLM(pi/Qwen3.5)이 스텁을 채워 구현** |
 
 > **핵심 구조**: TDD 방식에서 Claude는 인터페이스 설계(스텁)와 테스트만 담당하고,

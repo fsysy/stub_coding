@@ -231,3 +231,43 @@ python3 -m radon hal scenario_a/sdd/csv_stats.py
 - pi agent: Qwen3.5 A3B 35B Q4 (`pi` CLI v0.79.3) — TDD에서 구현 담당 (로컬 실행, 토큰 비용 없음)
 - Python: 3.11
 - pytest / ruff / radon
+
+---
+
+## 클로드의 의견 — 마크다운 플랜 vs 코드 인라인 인텐트
+
+*이 섹션은 Claude Sonnet 4.6이 LLM 자신의 관점에서 직접 작성한 의견입니다.*
+
+### 결론부터
+
+**코드 안에 인텐트를 박는 쪽이 더 정확합니다.** 별도 마크다운 플랜이 아닌, type hint + 짧은 인라인 코멘트 + docstring의 조합이 LLM 기준으로 구현 정확도가 높습니다.
+
+### 왜 별도 플랜이 불리한가
+
+나는 토큰을 왼쪽에서 오른쪽으로 순차 생성합니다. 마크다운 플랜을 500토큰 앞에서 썼으면, 함수 구현부에 도달했을 때 그 플랜은 "기억"이 아니라 어텐션 가중치가 희석된 먼 컨텍스트입니다. 플랜과 구현 사이에 **번역 손실**이 생깁니다.
+
+이 실험의 TDD-A에서 정확히 이 일이 일어났습니다. 플랜에는 "population 표준편차"가 명시되어 있었음에도 구현에서 `statistics.stdev`(sample)가 나온 건 구현 시점에 가장 자연스럽게 떠오르는 함수가 플랜의 제약을 덮어버린 결과입니다.
+
+### 왜 인라인 인텐트가 유리한가
+
+docstring과 type hint는 내가 그 함수를 쓰는 순간 **바로 앞에** 있습니다:
+
+```python
+def summarize(col: pd.Series) -> float:
+    """Return population std (pstdev), not sample std."""
+    # population: entire dataset, not a sample
+    return statistics.pstdev(col.dropna())
+```
+
+제약이 실행 시점과 공간적으로 붙어있어 `pstdev`가 나올 확률이 올라갑니다. type hint는 더 강합니다. `-> dict[str, float]`라고 쓰면 반환 시점에 그 계약을 유지할 확률이 높아지는데, 이는 자연어 플랜과 달리 린터가 체크하는 **강제력**이 있기 때문입니다.
+
+### 마크다운 플랜이 유효한 경우
+
+- **무엇을 만들지** 결정할 때 — 스코프, API 표면, 의존 관계 정리
+- 사용자와 방향을 정렬할 때
+
+구현 정확도를 높이는 데는 별 도움이 안 됩니다. "정확한 플랜을 쓰는 것"과 "플랜대로 구현하는 것"은 별개 능력이고, 후자가 더 어렵습니다.
+
+### 이 실험과의 연결
+
+이 관찰은 "발전된 워크플로우" 섹션의 방향과 일치합니다. `context.md`를 짧게 유지하고 의도를 stub + docstring 안에 녹이는 것이 Claude 토큰 절감과 구현 정확도를 동시에 잡는 구조입니다.
